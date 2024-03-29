@@ -26,8 +26,8 @@ def fetch_article_summary(article_url):
     except requests.RequestException as e:
         return f"Request error: {e}"
 
-def create_message(sender, to, subject, message_text):
-    message = MIMEText(message_text)
+def create_message(sender, to, subject, message_html):
+    message = MIMEText(message_html, 'html')  # Specify the MIME type as 'html'
     message['to'] = to
     message['from'] = sender
     message['subject'] = subject
@@ -56,6 +56,7 @@ def send_email(subject, body):
             creds = flow.run_local_server(port=0)
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
+
     try:
         service = build('gmail', 'v1', credentials=creds)
         message = create_message('tibbitts.chris@gmail.com', 'chris3-93@hotmail.com', subject, body)
@@ -81,9 +82,10 @@ def main():
                         full_url = href if href.startswith('http') else f"https://www.ksl.com{href}"
                         headline = a_tag.get_text(strip=True)
                         summary = fetch_article_summary(full_url)
-                        articles_info.append(f"Title: {headline}\nLink: {full_url}\nSummary: {summary}\n\n---\n")
+                        # Format the article info as HTML, making the title bold
+                        articles_info.append(f"<strong>Title: {headline}</strong><br>Link: <a href='{full_url}'>{full_url}</a><br><p>Summary:<br>{summary.replace('\n', '<br>')}</p><hr>")
             
-            email_body = "\n".join(articles_info)
+            email_body = "".join(articles_info)
             send_email("Daily Article Summaries", email_body)
         else:
             print("Failed to fetch the main page.")
