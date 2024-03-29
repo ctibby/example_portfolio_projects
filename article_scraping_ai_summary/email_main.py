@@ -65,13 +65,21 @@ def send_email(subject, body):
         print(f'An error occurred: {error}')
 
 def main():
-    articles_info = []
     url = "https://www.ksl.com/"
     try:
         response = requests.get(url)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             article_containers = soup.find_all('div', class_='queue', limit=10)
+
+            # Directly use the date from the most recent article for the filename
+            date_span = article_containers[0].find('span', class_='short')
+            most_recent_date = date_span.get_text(strip=True).split(" - ")[0] if date_span else "date_unknown"
+
+            # Replace any characters that are not suitable for filenames
+            sanitized_date = most_recent_date.replace("/", "_").replace(" ", " ")
+
+            articles_info = [f"<strong>Hey, here are the last 10 articles from KSL with summaries for {sanitized_date}.</strong><br><br><hr>"]
 
             for article in article_containers:
                 headline_tag = article.find('h2')
@@ -83,10 +91,10 @@ def main():
                         headline = a_tag.get_text(strip=True)
                         summary = fetch_article_summary(full_url)
                         # Format the article info as HTML, making the title bold
-                        articles_info.append(f"<strong>Title: {headline}</strong><br>Link: <a href='{full_url}'>{full_url}</a><br><p>Summary:<br>{summary.replace('\n', '<br>')}</p><hr>")
+                        articles_info.append(f"<a href='{full_url}'><strong>{headline}</strong></a><br><p>{summary.replace('\n', '<br>')}</p><hr>")
             
             email_body = "".join(articles_info)
-            send_email("Daily Article Summaries", email_body)
+            send_email(f"Article Summaries - {sanitized_date}", email_body)
         else:
             print("Failed to fetch the main page.")
     except requests.RequestException as e:
