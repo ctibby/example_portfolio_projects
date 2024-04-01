@@ -9,6 +9,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
 
+sendto = 'chris3-93@hotmail.com'
+
 def fetch_article_summary(article_url):
     try:
         response = requests.get(article_url)
@@ -27,7 +29,7 @@ def fetch_article_summary(article_url):
         return f"Request error: {e}"
 
 def create_message(sender, to, subject, message_html):
-    message = MIMEText(message_html, 'html')  # Specify the MIME type as 'html'
+    message = MIMEText(message_html, 'html')
     message['to'] = to
     message['from'] = sender
     message['subject'] = subject
@@ -59,7 +61,7 @@ def send_email(subject, body):
 
     try:
         service = build('gmail', 'v1', credentials=creds)
-        message = create_message('tibbitts.chris@gmail.com', 'chris3-93@hotmail.com', subject, body)
+        message = create_message('tibbitts.chris@gmail.com', sendto, subject, body)
         send_message(service, "me", message)
     except HttpError as error:
         print(f'An error occurred: {error}')
@@ -70,7 +72,7 @@ def main():
         response = requests.get(url)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
-            article_containers = soup.find_all('div', class_='queue', limit=10)
+            article_containers = soup.find_all('div', class_='queue', limit=20)
 
             # Directly use the date from the most recent article for the filename
             date_span = article_containers[0].find('span', class_='short')
@@ -79,8 +81,9 @@ def main():
             # Replace any characters that are not suitable for filenames
             sanitized_date = most_recent_date.replace("/", "_").replace(" ", " ")
 
-            articles_info = [f"<strong>Hey, here are the last 10 articles from KSL with summaries for {sanitized_date}.</strong><br><br><hr>"]
+            articles_info = [f"<strong>Hey, here are the last 5 articles from KSL with summaries for {sanitized_date}.</strong><br><br><hr>"]
 
+            i = 1
             for article in article_containers:
                 headline_tag = article.find('h2')
                 if headline_tag:
@@ -91,10 +94,15 @@ def main():
                         headline = a_tag.get_text(strip=True)
                         summary = fetch_article_summary(full_url)
                         # Format the article info as HTML, making the title bold
-                        articles_info.append(f"<a href='{full_url}'><strong>{headline}</strong></a><br><p>{summary.replace('\n', '<br>')}</p><hr>")
+                        if full_url.startswith("https://www.ksl.com"):
+                            if i <= 5:
+                                articles_info.append(f"<a href='{full_url}'><strong>{headline}</strong></a><br><p>{summary.replace('\n', '<br>')}</p><hr>")
+                                print(i)
+                                i += 1
             
             email_body = "".join(articles_info)
             send_email(f"Article Summaries - {sanitized_date}", email_body)
+            print(f"Sent email to {sendto}")
         else:
             print("Failed to fetch the main page.")
     except requests.RequestException as e:
